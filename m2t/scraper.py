@@ -1,8 +1,7 @@
 import binascii, urllib, socket, random, struct
-#from BitTorrent.bencode import bdecode
 from libtorrent import bdecode
-
-from urlparse import urlparse, urlunsplit
+from urllib.parse import urlparse, urlunsplit, urlencode
+from urllib.request import urlopen
 
 def scrape(tracker, hashes):
 	"""
@@ -35,7 +34,7 @@ def scrape(tracker, hashes):
 	raise RuntimeError("Unknown tracker scheme: %s" % parsed.scheme)	
 
 def scrape_udp(parsed_tracker, hashes):
-	print "Scraping UDP: %s for %s hashes" % (parsed_tracker.geturl(), len(hashes))
+	print ("Scraping UDP: %s for %s hashes" % (parsed_tracker.geturl(), len(hashes)))
 	if len(hashes) > 74:
 		raise RuntimeError("Only 74 hashes can be scraped on a UDP tracker due to UDP limitations")
 	transaction_id = "\x00\x00\x04\x12\x27\x10\x19\x70";
@@ -57,24 +56,24 @@ def scrape_udp(parsed_tracker, hashes):
 	return udp_parse_scrape_response(buf, transaction_id, hashes)
 
 def scrape_http(parsed_tracker, hashes):
-	print "Scraping HTTP: %s for %s hashes" % (parsed_tracker.geturl(), len(hashes))
+	print ("Scraping HTTP: %s for %s hashes" % (parsed_tracker.geturl(), len(hashes)))
 	qs = []
 	for hash in hashes:
 		url_param = binascii.a2b_hex(hash)
 		qs.append(("info_hash", url_param))
-	qs = urllib.urlencode(qs)
+	qs = urlencode(qs)
 	pt = parsed_tracker	
 	url = urlunsplit((pt.scheme, pt.netloc, pt.path, qs, pt.fragment))
-	handle = urllib.urlopen(url);
+	handle = urlopen(url);
 	if handle.getcode() is not 200:
 		raise RuntimeError("%s status code returned" % handle.getcode())	
 	decoded = bdecode(handle.read())
 	ret = {}
-	for hash, stats in decoded['files'].iteritems():		
-		nice_hash = binascii.b2a_hex(hash)		
-		s = stats["complete"]
-		p = stats["incomplete"]
-		c = stats["downloaded"]
+	for hash, stats in decoded[b'files'].items():
+		nice_hash = binascii.b2a_hex(hash).decode('UTF-8')
+		s = stats[b'complete']
+		p = stats[b'incomplete']
+		c = stats[b'downloaded']
 		ret[nice_hash] = { "seeds" : s, "peers" : p, "complete" : c}		
 	return ret
 
