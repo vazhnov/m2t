@@ -1,5 +1,3 @@
-# pylint: disable=line-too-long,missing-docstring
-
 import binascii
 # import urllib
 import socket
